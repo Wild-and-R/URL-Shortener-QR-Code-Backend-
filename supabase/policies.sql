@@ -17,3 +17,9 @@ using (auth.uid() = user_id);
 create policy "Anyone can insert clicks"
 on clicks for insert
 with check (true);
+
+-- Allow service role to insert profiles
+create policy "Allow service role to insert profiles"
+on profiles
+for insert
+using (auth.role() = 'service_role');

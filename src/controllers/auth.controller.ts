@@ -1,39 +1,53 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export const register = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-  });
-
-  if (error) {
-    return res.status(400).json({ error: error.message });
-  }
-
-  if (!data.user) {
-    return res.status(500).json({ error: 'User creation failed' });
-  }
-
-  // Create profile row
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .insert({
-      id: data.user.id,
+  try {
+    // Sign up user with normal Supabase client (anon/public key)
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
+      password,
     });
 
-  if (profileError) {
-    return res.status(500).json({ error: profileError.message });
-  }
+    if (signUpError) {
+      return res.status(400).json({ error: signUpError.message });
+    }
 
-  return res.json({
-    message: 'Register success',
-    user: data.user,
-  });
+    if (!signUpData.user) {
+      return res.status(500).json({ error: 'User creation failed' });
+    }
+
+    // Insert profile using service role client to bypass RLS
+    const serviceSupabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { error: profileError } = await serviceSupabase
+      .from('profiles')
+      .insert({
+        id: signUpData.user.id,
+        email,
+      });
+
+    if (profileError) {
+      return res.status(500).json({ error: profileError.message });
+    }
+
+    // Return success
+    return res.json({
+      message: 'Register success',
+      user: signUpData.user,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
+  }
 };
+
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
