@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { nanoid } from 'nanoid';
+import QRCode from 'qrcode';
 import { supabase } from '../config/supabase';
 
 export const createShortLink = async (req: Request, res: Response) => {
@@ -8,11 +9,11 @@ export const createShortLink = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { originalUrl, customAlias } = req.body;
+    const { originalUrl, customAlias, generateQr } = req.body;
 
     const shortCode = customAlias || nanoid(7);
 
-    const { data, error } = await supabase
+    const { data: link, error } = await supabase
       .from('links')
       .insert({
         user_id: req.user.id,
@@ -26,7 +27,31 @@ export const createShortLink = async (req: Request, res: Response) => {
       return res.status(400).json({ message: error.message });
     }
 
-    res.status(201).json(data);
+    const shortUrl = `${process.env.BASE_URL}/${link.short_code}`;
+
+    let qrGenerated = false;
+
+    // Only generate QR if requested
+    if (generateQr === true) {
+      const qrBase64 = await QRCode.toDataURL(shortUrl, {
+        type: 'image/png',
+        width: 512,
+        margin: 2
+      });
+
+      await supabase
+        .from('links')
+        .update({ qr_code: qrBase64 })
+        .eq('id', link.id);
+
+      qrGenerated = true;
+    }
+
+    res.status(201).json({
+      ...link,
+      short_url: shortUrl,
+      qr_generated: qrGenerated
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
