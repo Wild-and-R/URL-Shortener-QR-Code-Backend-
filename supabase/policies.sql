@@ -23,3 +23,10 @@ create policy "Allow service role to insert profiles"
 on profiles
 for insert
 using (auth.role() = 'service_role');
+
+-- Allow publishable key to insert profiles
+CREATE POLICY "Allow signup inserts for owner"
+  ON public.profiles
+  FOR INSERT
+  TO authenticated
+  WITH CHECK ((SELECT auth.uid()) = id);
