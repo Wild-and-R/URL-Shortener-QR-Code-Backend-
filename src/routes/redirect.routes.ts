@@ -16,12 +16,12 @@ router.get('/:code', async (req, res) => {
     return res.status(404).send('Link not found');
   }
 
-  await supabase.from('click_logs').insert({
-    link_id: link.id,
-    ip_address: req.ip,
-    user_agent: req.headers['user-agent'],
-    referrer: req.headers.referer,
+  await supabase.from('clicks').insert({
+  link_id: link.id,
+  ip_address: req.ip,
+  user_agent: req.headers['user-agent'],
   });
+
 
   await supabase
     .from('links')
