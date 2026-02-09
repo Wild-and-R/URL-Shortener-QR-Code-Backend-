@@ -56,3 +56,47 @@ export const createShortLink = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export const getLinkStats = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const { id } = req.params; // short_code
+
+    // Get the link (ownership check)
+    const { data: link, error: linkError } = await supabase
+      .from('links')
+      .select('id, short_code, click_count')
+      .eq('short_code', id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (linkError || !link) {
+      return res.status(404).json({ message: 'Link not found' });
+    }
+
+    // Get click timestamps
+    const { data: clicks, error: clicksError } = await supabase
+      .from('clicks')
+      .select('created_at')
+      .eq('link_id', link.id)
+      .order('created_at', { ascending: true });
+
+    if (clicksError) {
+      return res.status(400).json({ message: clicksError.message });
+    }
+
+    res.json({
+      link_id: link.id,
+      short_code: link.short_code,
+      total_clicks: link.click_count,
+      click_times: clicks.map(c => c.created_at)
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch link statistics' });
+  }
+};
+
