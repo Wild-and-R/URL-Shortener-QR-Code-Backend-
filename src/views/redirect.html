@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Redirecting...</title>
+
+    <!-- Auto redirect after 3 seconds -->
+    <meta http-equiv="refresh" content="3;url={{URL}}" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f9fafb;
+        height: 100vh;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card {
+        background: white;
+        padding: 24px 28px;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        max-width: 420px;
+        width: 100%;
+        text-align: center;
+      }
+      .url {
+        word-break: break-all;
+        color: #2563eb;
+        margin: 12px 0;
+      }
+      .hint {
+        font-size: 14px;
+        color: #6b7280;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="card">
+      <h2>You're being redirected</h2>
+
+      <p class="hint">Destination:</p>
+      <p class="url">{{URL}}</p>
+
+      <p class="hint">
+        Redirecting in <strong>3 seconds</strong>…
+      </p>
+
+      <p class="hint">
+        <a href="{{URL}}">Click here if it doesn’t work</a>
+      </p>
+    </div>
+  </body>
+</html>
