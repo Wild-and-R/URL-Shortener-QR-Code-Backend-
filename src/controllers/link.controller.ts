@@ -100,3 +100,111 @@ export const getLinkStats = async (req: Request, res: Response) => {
   }
 };
 
+export const updateLink = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const { id } = req.params; // short_code
+    const { originalUrl, customAlias, regenerateQr } = req.body;
+
+    // Get existing link (ownership check)
+    const { data: existingLink, error: fetchError } = await supabase
+      .from('links')
+      .select('*')
+      .eq('short_code', id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (fetchError || !existingLink) {
+      return res.status(404).json({ message: 'Link not found' });
+    }
+
+    const updatedData: any = {};
+
+    if (originalUrl) {
+      updatedData.original_url = originalUrl;
+    }
+
+    if (customAlias) {
+      updatedData.short_code = customAlias;
+    }
+
+    // Update link
+    const { data: updatedLink, error: updateError } = await supabase
+      .from('links')
+      .update(updatedData)
+      .eq('id', existingLink.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return res.status(400).json({ message: updateError.message });
+    }
+
+    const shortUrl = `${process.env.BASE_URL}/${updatedLink.short_code}`;
+
+    // Optional QR regeneration
+    if (regenerateQr === true) {
+      const qrBase64 = await QRCode.toDataURL(shortUrl, {
+        type: 'image/png',
+        width: 512,
+        margin: 2
+      });
+
+      await supabase
+        .from('links')
+        .update({ qr_code: qrBase64 })
+        .eq('id', updatedLink.id);
+    }
+
+    res.json({
+      message: 'Link updated successfully',
+      ...updatedLink,
+      short_url: shortUrl
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to update link' });
+  }
+};
+
+export const deleteLink = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const { id } = req.params; // short_code
+
+    // Check ownership
+    const { data: existingLink, error: fetchError } = await supabase
+      .from('links')
+      .select('id')
+      .eq('short_code', id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (fetchError || !existingLink) {
+      return res.status(404).json({ message: 'Link not found' });
+    }
+
+    // Delete link (clicks cascade automatically)
+    const { error: deleteError } = await supabase
+      .from('links')
+      .delete()
+      .eq('id', existingLink.id);
+
+    if (deleteError) {
+      return res.status(400).json({ message: deleteError.message });
+    }
+
+    res.json({ message: 'Link deleted successfully' });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete link' });
+  }
+};
