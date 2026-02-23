@@ -3,14 +3,12 @@ import { nanoid } from 'nanoid';
 import QRCode from 'qrcode';
 import { supabase } from '../config/supabase';
 
+// Create a new short link
 export const createShortLink = async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
     const { originalUrl, customAlias, generateQr } = req.body;
-
     const shortCode = customAlias || nanoid(7);
 
     const { data: link, error } = await supabase
@@ -23,27 +21,19 @@ export const createShortLink = async (req: Request, res: Response) => {
       .select()
       .single();
 
-    if (error) {
-      return res.status(400).json({ message: error.message });
-    }
+    if (error) return res.status(400).json({ message: error.message });
 
     const shortUrl = `${process.env.BASE_URL}/${link.short_code}`;
-
     let qrGenerated = false;
 
-    // Only generate QR if requested
-    if (generateQr === true) {
+    if (generateQr) {
       const qrBase64 = await QRCode.toDataURL(shortUrl, {
         type: 'image/png',
         width: 512,
         margin: 2
       });
 
-      await supabase
-        .from('links')
-        .update({ qr_code: qrBase64 })
-        .eq('id', link.id);
-
+      await supabase.from('links').update({ qr_code: qrBase64 }).eq('id', link.id);
       qrGenerated = true;
     }
 
@@ -52,20 +42,19 @@ export const createShortLink = async (req: Request, res: Response) => {
       short_url: shortUrl,
       qr_generated: qrGenerated
     });
+
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
+// Get stats for a single link
 export const getLinkStats = async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
     const { id } = req.params; // short_code
-
-    // Get the link (ownership check)
     const { data: link, error: linkError } = await supabase
       .from('links')
       .select('id, short_code, click_count')
@@ -73,20 +62,15 @@ export const getLinkStats = async (req: Request, res: Response) => {
       .eq('user_id', req.user.id)
       .single();
 
-    if (linkError || !link) {
-      return res.status(404).json({ message: 'Link not found' });
-    }
+    if (linkError || !link) return res.status(404).json({ message: 'Link not found' });
 
-    // Get click timestamps
     const { data: clicks, error: clicksError } = await supabase
       .from('clicks')
       .select('created_at')
       .eq('link_id', link.id)
       .order('created_at', { ascending: true });
 
-    if (clicksError) {
-      return res.status(400).json({ message: clicksError.message });
-    }
+    if (clicksError) return res.status(400).json({ message: clicksError.message });
 
     res.json({
       link_id: link.id,
@@ -94,22 +78,21 @@ export const getLinkStats = async (req: Request, res: Response) => {
       total_clicks: link.click_count,
       click_times: clicks.map(c => c.created_at)
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to fetch link statistics' });
   }
 };
 
+// Update a link
 export const updateLink = async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
     const { id } = req.params; // short_code
     const { originalUrl, customAlias, regenerateQr } = req.body;
 
-    // Get existing link (ownership check)
     const { data: existingLink, error: fetchError } = await supabase
       .from('links')
       .select('*')
@@ -117,21 +100,12 @@ export const updateLink = async (req: Request, res: Response) => {
       .eq('user_id', req.user.id)
       .single();
 
-    if (fetchError || !existingLink) {
-      return res.status(404).json({ message: 'Link not found' });
-    }
+    if (fetchError || !existingLink) return res.status(404).json({ message: 'Link not found' });
 
     const updatedData: any = {};
+    if (originalUrl) updatedData.original_url = originalUrl;
+    if (customAlias) updatedData.short_code = customAlias;
 
-    if (originalUrl) {
-      updatedData.original_url = originalUrl;
-    }
-
-    if (customAlias) {
-      updatedData.short_code = customAlias;
-    }
-
-    // Update link
     const { data: updatedLink, error: updateError } = await supabase
       .from('links')
       .update(updatedData)
@@ -139,24 +113,17 @@ export const updateLink = async (req: Request, res: Response) => {
       .select()
       .single();
 
-    if (updateError) {
-      return res.status(400).json({ message: updateError.message });
-    }
+    if (updateError) return res.status(400).json({ message: updateError.message });
 
     const shortUrl = `${process.env.BASE_URL}/${updatedLink.short_code}`;
 
-    // Optional QR regeneration
-    if (regenerateQr === true) {
+    if (regenerateQr) {
       const qrBase64 = await QRCode.toDataURL(shortUrl, {
         type: 'image/png',
         width: 512,
         margin: 2
       });
-
-      await supabase
-        .from('links')
-        .update({ qr_code: qrBase64 })
-        .eq('id', updatedLink.id);
+      await supabase.from('links').update({ qr_code: qrBase64 }).eq('id', updatedLink.id);
     }
 
     res.json({
@@ -171,15 +138,13 @@ export const updateLink = async (req: Request, res: Response) => {
   }
 };
 
+// Delete a link
 export const deleteLink = async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
-    const { id } = req.params; // short_code
+    const { id } = req.params;
 
-    // Check ownership
     const { data: existingLink, error: fetchError } = await supabase
       .from('links')
       .select('id')
@@ -187,19 +152,14 @@ export const deleteLink = async (req: Request, res: Response) => {
       .eq('user_id', req.user.id)
       .single();
 
-    if (fetchError || !existingLink) {
-      return res.status(404).json({ message: 'Link not found' });
-    }
+    if (fetchError || !existingLink) return res.status(404).json({ message: 'Link not found' });
 
-    // Delete link (clicks cascade automatically)
     const { error: deleteError } = await supabase
       .from('links')
       .delete()
       .eq('id', existingLink.id);
 
-    if (deleteError) {
-      return res.status(400).json({ message: deleteError.message });
-    }
+    if (deleteError) return res.status(400).json({ message: deleteError.message });
 
     res.json({ message: 'Link deleted successfully' });
 
@@ -209,11 +169,10 @@ export const deleteLink = async (req: Request, res: Response) => {
   }
 };
 
+// Get all links for the authenticated user
 export const getMyLinks = async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+    if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
     const { data: links, error } = await supabase
       .from('links')
@@ -221,22 +180,18 @@ export const getMyLinks = async (req: Request, res: Response) => {
       .eq('user_id', req.user.id)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      return res.status(400).json({ message: error.message });
-    }
+    if (error) return res.status(400).json({ message: error.message });
 
+    // Return just the array for frontend
     const formattedLinks = links.map(link => ({
       ...link,
       short_url: `${process.env.BASE_URL}/${link.short_code}`
     }));
 
-    return res.json({
-      total: formattedLinks.length,
-      links: formattedLinks
-    });
+    res.json(formattedLinks);
 
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Failed to fetch links' });
+    res.status(500).json({ message: 'Failed to fetch links' });
   }
 };
