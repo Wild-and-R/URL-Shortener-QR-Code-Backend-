@@ -208,3 +208,35 @@ export const deleteLink = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Failed to delete link' });
   }
 };
+
+export const getMyLinks = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const { data: links, error } = await supabase
+      .from('links')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    const formattedLinks = links.map(link => ({
+      ...link,
+      short_url: `${process.env.BASE_URL}/${link.short_code}`
+    }));
+
+    return res.json({
+      total: formattedLinks.length,
+      links: formattedLinks
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Failed to fetch links' });
+  }
+};

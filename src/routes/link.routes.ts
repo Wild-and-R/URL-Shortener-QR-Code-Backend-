@@ -4,7 +4,8 @@ import {
   createShortLink, 
   getLinkStats, 
   updateLink, 
-  deleteLink 
+  deleteLink,
+  getMyLinks 
 } from '../controllers/link.controller';
 import { downloadQrPng } from '../controllers/qr.controller';
 
@@ -15,5 +16,6 @@ router.get('/:id/qr', authenticate, downloadQrPng);
 router.get('/:id/stats', authenticate, getLinkStats);
 router.put('/:id', authenticate, updateLink);
 router.delete('/:id', authenticate, deleteLink);
+router.get('/mylinks', authenticate, getMyLinks);
 
 export default router;

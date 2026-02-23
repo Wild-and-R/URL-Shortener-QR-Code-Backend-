@@ -8,7 +8,7 @@ export const register = async (req: Request, res: Response) => {
   try {
     // Sign up user with normal Supabase client (anon/public key)
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
+      email,      
       password,
     });
 
