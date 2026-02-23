@@ -8,6 +8,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.94.0",
     "@types/qrcode": "^1.5.6",
+    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "nanoid": "^5.1.6",
