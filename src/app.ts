@@ -8,7 +8,7 @@ const app = express();
 const cors = require('cors');
 app.use(express.json());
 app.use(cors({
-  origin: 'https://linkzip-zeta.vercel.app/'
+  origin: 'https://linkzip-zeta.vercel.app'
 }));
 
 app.use('/api/auth', authRoutes);
