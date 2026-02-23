@@ -8,11 +8,13 @@ const app = express();
 const cors = require('cors');
 app.use(express.json());
 app.use(cors({
-  origin: 'https://linkzip-zeta.vercel.app'
+  origin: "https://linkzip-zeta.vercel.app",
+  methods: ["GET","POST","PUT","DELETE"],
+  credentials: true
 }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/links', linkRoutes);
-app.use('/', redirectRoutes);
+app.use('/r', redirectRoutes);
 
 export default app;
